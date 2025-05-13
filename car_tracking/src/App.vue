@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
 import HelloWorld from './components/HelloWorld.vue'
+import Sidebar from '@/components/sidebar/Sidebar.vue'
 </script>
 
-<template>
+<!-- <template>
   <header>
     <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
 
@@ -15,13 +16,30 @@ import HelloWorld from './components/HelloWorld.vue'
         <RouterLink to="/about">About</RouterLink>
       </nav>
     </div>
-  </header>
+  </header> -->
 
-  <RouterView />
+  <!-- <RouterView />
+</template> -->
+
+
+
+
+
+<template>
+  <div class="layout">
+    <Sidebar />
+    
+    <main class="main-content">
+      <RouterView />
+       
+    </main>
+  </div>
 </template>
 
 <style scoped>
-header {
+
+
+/* header {
   line-height: 1.5;
   max-height: 100vh;
 }
@@ -80,6 +98,27 @@ nav a:first-of-type {
 
     padding: 1rem 0;
     margin-top: 1rem;
+  }
+    
+} */
+ 
+
+
+
+.main-content {
+
+  
+  display: flex;
+  background-color:white;
+  border-top-left-radius: 11px;
+  border-bottom-left-radius: 11px;
+ 
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+    padding-bottom: 80px; /* Высота мобильного меню + отступ */
   }
 }
 </style>

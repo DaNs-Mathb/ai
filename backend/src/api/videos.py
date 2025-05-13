@@ -35,10 +35,10 @@ async def upload_validated_video(video: UploadFile = File(...)):
             )
         
         # Создаем директорию, если её нет
-        os.makedirs("src/uploads", exist_ok=True)
+        os.makedirs("backend/src/uploads", exist_ok=True)
         
         # Сохранение файла
-        file_path = f"src/uploads/{video_id}.mp4"
+        file_path = f"backend/src/uploads/{video_id}.mp4"
         try:
             with open(file_path, "wb") as buffer:
                 buffer.write(await video.read())
@@ -81,7 +81,7 @@ async def upload_validated_video(video: UploadFile = File(...)):
 
 @router.get("/get_video/{video_name}")
 async def get_video(video_name:str):
-    return FileResponse(f"src/uploads/{video_name}")
+    return FileResponse(f"backend/src/uploads/{video_name}")
 
 
 @router.get("/tasks/{task_id}/status")#response_model=TaskStatusResponse

@@ -1,9 +1,9 @@
 @import './base.css';
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  /* max-width: 1280px;
+  margin: 0 auto; */
+  /* padding: 2rem; */
   font-weight: normal;
 }
 
@@ -14,6 +14,11 @@ a,
   transition: 0.4s;
   padding: 3px;
 }
+.layout {
+  min-height: 100vh;
+  display: block; /* mobile first */
+  background-color: black;
+}
 
 @media (hover: hover) {
   a:hover {
@@ -22,14 +27,11 @@ a,
 }
 
 @media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
-
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+  
+}
+@media (min-width: 769px) {
+  .layout {
+    padding-left: 250px; /* ширина сайдбара */
+    background-color: black;
   }
 }

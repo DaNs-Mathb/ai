@@ -1,3 +1,4 @@
+from datetime import timedelta
 import cv2 
 from ultralytics import YOLO
 import torch
@@ -29,9 +30,9 @@ def processing_video(self,input_video: str ,classe:int=2):
         
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         # print(f"Using device: {device}")
-        model = YOLO("src/middleware/yolo11m.pt").to(device)  # Замените "yolov8n.pt" на путь к вашей модели
+        model = YOLO("backend/src/middleware/yolo11m.pt").to(device)  # Замените "yolov8n.pt" на путь к вашей модели
         # Открываем видео через OpenCV
-        cap = cv2.VideoCapture(f"src/uploads/{input_video}")
+        cap = cv2.VideoCapture(f"backend/src/uploads/{input_video}")
     
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         
@@ -48,7 +49,7 @@ def processing_video(self,input_video: str ,classe:int=2):
         output_name=f'output_{input_video}'
         # Создаем VideoWriter для сохранения видео
         fourcc = cv2.VideoWriter_fourcc(*'avc1')
-        out = cv2.VideoWriter(f'src/uploads/{output_name}', fourcc, fps, (frame_width, frame_height))
+        out = cv2.VideoWriter(f'backend/src/uploads/{output_name}', fourcc, fps, (frame_width, frame_height))
 
         frame_count = 0
         skip_frames = 2
@@ -89,9 +90,14 @@ def processing_video(self,input_video: str ,classe:int=2):
         client.fput_object(
             "processed-videos",  # Бакет
             output_name,      # Имя файла в MinIO
-            f"src/uploads/{output_name}"    # Локальный путь
+            f"backend/src/uploads/{output_name}"    # Локальный путь
         )
-        for file_path in [f'src/uploads/{output_name}',f"src/uploads/{input_video}"]:
+        url = client.presigned_get_object(
+        "processed-videos",
+        output_name,
+        expires=timedelta(hours=1))
+        
+        for file_path in [f'backend/src/uploads/{output_name}',f"backend/src/uploads/{input_video}"]:
             if os.path.exists(file_path):
                 os.remove(file_path)
         
@@ -99,6 +105,7 @@ def processing_video(self,input_video: str ,classe:int=2):
             "status": "success",
             "original_task_id": self.request.id,  # Настоящий task_id из Celery
             "processed_file": output_name,
+            "url":url,
         }
     except Exception as e:
         return {

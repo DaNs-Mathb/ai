@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import TheWelcome from '../components/TheWelcome.vue'
+import Uploads from '@/components/videos/uploads.vue'
 </script>
 
 <template>
-  <main>
-    <TheWelcome />
-  </main>
+  
+    <Uploads />
+  
 </template>

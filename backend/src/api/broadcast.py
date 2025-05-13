@@ -32,7 +32,7 @@ async def offer(params: Offer):
     # Добавляем трек
     # pc.addTrack(video_track)
   
-    processor = FrameProcessor("src/middleware/yolo11m.pt", device="cuda")
+    processor = FrameProcessor("backend/src/middleware/yolo11m.pt", device="cuda")
     @pc.on("track")
     def on_track(track):
        
