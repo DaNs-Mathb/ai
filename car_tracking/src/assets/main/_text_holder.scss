@@ -1,0 +1,36 @@
+.trafficContainer {
+  max-width: 450px;
+  gap: 18px;
+  display: flex;
+  flex-direction: column;
+
+  .sectionBlock {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    text-align: start;
+
+    
+
+    .contentWrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      .sectionTitle {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        font-weight: bold;
+        font-size: large;
+      }
+
+      .sectionText {
+        font-size: 13.5px;
+        line-height: 1.5;
+        padding: 0;
+        color: gray;
+      }
+    }
+  }
+}

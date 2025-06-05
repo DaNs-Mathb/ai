@@ -18,6 +18,54 @@
       <Button id="fetch_button" label="Upload" @click="upload" severity="secondary" :disabled="isUploading" />
       
     </div>
+    <div class="trafficContainer">
+    <!-- Первая секция -->
+    <div class="sectionBlock">
+      <div class="iconWrapper">
+        <i class="pi pi-fw pi-download"></i>
+      </div>
+      <div class="contentWrapper">
+        <div class="sectionTitle">Что делает обработка?</div>
+        <div class="sectionText">
+          Обработка видео с камер дорожного движения преобразует сырые записи в структурированные данные, пригодные для анализа нейронными сетями. Это включает:
+          Детекцию и классификацию транспортных средств (автомобили, грузовики, мотоциклы).
+          Отслеживание максимальной и средней скорости транспорта.
+          Подсчёт интенсивности потока и загруженности дорог.
+        </div>
+      </div>
+    </div>
+
+    <!-- Вторая секция -->
+    <div class="sectionBlock">
+      <div class="iconWrapper">
+        <i class="pi pi-fw pi-cog"></i> <!-- Другая иконка -->
+      </div>
+      <div class="contentWrapper">
+        <div class="sectionTitle">Как это работает?</div>
+        <div class="sectionText">
+          Анализ нейросетью – выделение объектов, определение их скорости и типа.
+          Сохранение данных – статистика в формате CSV, визуализация на видео.
+        </div>
+      </div>
+    </div>
+
+    <!-- Третья секция -->
+    <div class="sectionBlock">
+      <div class="iconWrapper">
+        <i class="pi pi-fw pi-chart-bar"></i> <!-- Другая иконка -->
+      </div>
+      <div class="contentWrapper">
+        <div class="sectionTitle">Результаты</div>
+        <div class="sectionText">
+          После обработки вы получаете:
+          Отчёты о загруженности дорог в реальном времени.
+          Предупреждения о нарушениях ПДД (превышение скорости, проезд на красный).
+          Данные для оптимизации дорожной инфраструктуры.
+          Обработка видео с камер позволяет автоматизировать мониторинг трафика и повысить безопасность на дорогах.
+        </div>
+      </div>
+    </div>
+  </div>
   </div>
 </template>
 
@@ -179,8 +227,9 @@ const progress =async (task:string)=>{
   align-items: center;
   justify-content: center;
   height: 100vh; /* центрирование по всей высоте экрана */
-  width: 100vw;
-  
+  flex-direction: row;
+  gap: 48px;
+  text-align: center;
 }
 
 .upload-content {
@@ -194,6 +243,12 @@ const progress =async (task:string)=>{
   width: 100%;
   /* Увеличьте высоту для лучшей видимости */
   
+}
+
+@media (max-width: 991px) {
+  .upload-container{
+    flex-direction: column;
+  }
 }
 </style>
 

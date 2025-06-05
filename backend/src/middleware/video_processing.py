@@ -24,6 +24,8 @@ client = Minio(
 
 
 
+
+
 @celery_app.task(bind=True,name="src.middleware.video_processing.processing_video")
 def processing_video(self,input_video: str ,classe:int=2):
     try:
@@ -50,7 +52,15 @@ def processing_video(self,input_video: str ,classe:int=2):
         # Создаем VideoWriter для сохранения видео
         fourcc = cv2.VideoWriter_fourcc(*'avc1')
         out = cv2.VideoWriter(f'backend/src/uploads/{output_name}', fourcc, fps, (frame_width, frame_height))
-
+        
+        
+        #подсчет количества
+        unique_car_ids = set()
+        all_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        duration = all_frames/fps
+        
+        
+        
         frame_count = 0
         skip_frames = 2
         last_processed_frame = None
@@ -64,7 +74,30 @@ def processing_video(self,input_video: str ,classe:int=2):
             if frame_count % (skip_frames + 1) == 0:
                 # Обрабатываем каждый (skip_frames+1)-й кадр
                 results = model.track(frame, classes=[classe], persist=True, device=device, imgsz=640)
+                
+                
+                if results[0].boxes.id is not None:
+                     # Получаем ID, классы и координаты
+                    boxes = results[0].boxes.xyxy  # Координаты bbox
+                    track_ids = results[0].boxes.id.int().tolist()
+                    confidences = results[0].boxes.conf.tolist()  # Уверенность детекции
+
+                    
+                    
+                    # Фильтруем только машины (класс 2 в COCO)
+                    for box, track_id,  conf in zip(boxes, track_ids, confidences):
+                    # Фильтруем: только машины (класс 2), уверенность > 50%, площадь > MIN_BOX_AREA
+                        
+                    
+                        if conf >= 0.5 and (box[2] - box[0]) * (box[3] - box[1]) >= 1000:
+                            unique_car_ids.add(track_id)
+                
+                
                 last_processed_frame = results[0].plot()  # Сохраняем обработанный кадр
+                
+                
+                
+                
 
             progress = int((frame_count / total_frames) * 100)
             if progress % 5 == 0:
@@ -106,6 +139,9 @@ def processing_video(self,input_video: str ,classe:int=2):
             "original_task_id": self.request.id,  # Настоящий task_id из Celery
             "processed_file": output_name,
             "url":url,
+            "unique_car_ids": len(unique_car_ids),
+            "cars_per_minute": len(unique_car_ids) / (duration / 60) if duration > 0 else 0,
+            
         }
     except Exception as e:
         return {

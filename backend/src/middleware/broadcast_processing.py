@@ -20,6 +20,7 @@ class FrameProcessor:
         self._input_queue = asyncio.Queue()
         self._output_queue = asyncio.Queue()
         self._task = asyncio.create_task(self._run())  # Запускаем фоновую задачу
+        self.count=0
 
     async def _run(self):
         """Фоновая задача загрузки модели и обработки кадров"""
@@ -37,13 +38,16 @@ class FrameProcessor:
                 return
 
             while True:
+                
                 img = await self._input_queue.get()
                 if img is None:
                     break  # Завершаем
-
+                
                 result = self._model.track(img, persist=False, device=self._device, verbose=False)
                 plotted = result[0].plot()
+                
                 await self._output_queue.put(plotted)
+                
         except asyncio.CancelledError:
             print("Задача корректно завершена")
         finally:
