@@ -13,9 +13,13 @@
         name="video"
         accept="video/*"
         :maxFileSize="100000000"
+        chooseLabel="Выбрать файл"
+        uploadLabel="Загрузить"
+        cancelLabel="Отмена"
+        
         @select="onSelect"
       />
-      <Button id="fetch_button" label="Upload" @click="upload" severity="secondary" :disabled="isUploading" />
+      <Button id="fetch_button" label="Загрузить" @click="upload" severity="secondary" :disabled="isUploading" />
       
     </div>
     <div class="trafficContainer">
@@ -38,7 +42,7 @@
     <!-- Вторая секция -->
     <div class="sectionBlock">
       <div class="iconWrapper">
-        <i class="pi pi-fw pi-cog"></i> <!-- Другая иконка -->
+        <i class="pi pi-fw pi-question-circle"></i> <!-- Другая иконка -->
       </div>
       <div class="contentWrapper">
         <div class="sectionTitle">Как это работает?</div>
@@ -70,25 +74,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import Toast from 'primevue/toast'
 import FileUpload from 'primevue/fileupload'
 import Button from 'primevue/button';
 import { useToast } from 'primevue/usetoast'
 import {ChildService} from "../../servise/api/videos"
 import { ProgressBar } from 'primevue';
-import { progressbar } from '@primeuix/themes/aura/fileupload';
+import { onMounted } from 'vue';
+import { onBeforeUnmount } from 'vue';
+import { useWebSocketStore } from './websocket';
 
 
 const childService = new ChildService();
 
 const isUploading = ref(true)
+const websocketStore = useWebSocketStore();
 
 const progressValue = ref(0);
-let socket:WebSocket
+progressValue.value=websocketStore.progressValue;
+
 const toast = useToast();
 const fileupload = ref();
 const selectedFile = ref<File | null>(null)
+
+
+onMounted(() => {
+  const savedTaskId = localStorage.getItem('video_task_id');
+  if (savedTaskId) {
+    websocketStore.connect(savedTaskId)
+  }
+});
+
+watch(
+  () => websocketStore.progressValue,
+  (newVal) => {
+    progressValue.value = newVal;
+  },
+  { immediate: true }
+);
+
+// Отслеживаем завершение задачи для автоскачивания
+
 
 
 const onSelect = (event: { files: File[] }) => {
@@ -117,7 +144,9 @@ const upload = async () => {
     selectedFile.value = null
     fileupload.value.clear()
     
-    await progress(response.task_id)
+    
+    websocketStore.connect(response.task_id);
+    // await progress(response.task_id)
 
   } catch (error) {
     toast.add({
@@ -129,92 +158,100 @@ const upload = async () => {
   }
 }
 
-const progress =async (task:string)=>{
-   const taskId = task; 
-  
-  if (!taskId) {
-    console.error('Task ID is required');
-    return;
-  }
-
-  // Формируем URL подключения
-  const protocol ='ws:';
-  const connection = `${protocol}//127.0.0.1:8000/ws/tasks/${taskId}`;
-  
-  console.log('Connecting to:', connection);
-  
-  // Создаем новое подключение
-  socket = new WebSocket(connection);
-
-  socket.onopen = () => {
-    console.log('WebSocket connection established');
-  };
-
-  socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log('Update received:', data);
+  // const progress =async (task:string)=>{
+  //   const taskId = task; 
     
-    // Обновляем прогресс
-    if (data.progress !== undefined) {
-      progressValue.value = data.progress;
-      console.log(`Progress: ${data.progress}% (${data.current || 0}/${data.total || 1} frames)`);
-    }
+  //   if (!taskId) {
+  //     console.error('Task ID is required');
+  //     return;
+  //   }
 
-    if (data.status === 'PENDING') {
-      console.log('Task is waiting in queue');
-      progressValue.value = 0;
-      
-      if (data.position) {
-        console.log(`Position in queue: ${data.position}`);
-      }
-    }
+  //   // Формируем URL подключения
+  //   const protocol ='ws:';
+  //   const connection = `${protocol}//127.0.0.1:8000/ws/tasks/${taskId}`;
     
-    if (data.status === 'RECEIVED') {
-      console.log('Task received and queued for processing');
-      progressValue.value = 0;
-    }
-    else if (data.status === 'PROGRESS') {
-      console.log(`Progress: ${data.progress}% (${data.current || 0}/${data.total || 1} frames)`);
-    }
-    else if (data.status === 'SUCCESS') {
-      console.log('Processing complete!', data.result);
-      progressValue.value = 0;
+  //   console.log('Connecting to:', connection);
+    
+  //   // Создаем новое подключение
+  //   socket = new WebSocket(connection);
 
-      const downloadLink = document.createElement('a');
-      downloadLink.href = data.result.url;
-      downloadLink.download = data.processed_file; // Имя файла для сохранения
-      downloadLink.style.display = 'none';
+  //   socket.onopen = () => {
+  //     console.log('WebSocket connection established');
+  //   };
+
+  //   socket.onmessage = (event) => {
+  //     const data = JSON.parse(event.data);
+  //     console.log('Update received:', data);
+  //     if (localStorage.getItem('video_task_id') === null) {
+  //       localStorage.setItem('video_task_id', data.task_id);
+  //       console.log("Ключ установлен");
+  //     }
+  //     // Обновляем прогресс
+  //     if (data.progress !== undefined) {
+  //       progressValue.value = data.progress;
+  //       console.log(`Progress: ${data.progress}% (${data.current || 0}/${data.total || 1} frames)`);
+  //     }
+
+  //     if (data.status === 'PENDING') {
+  //       console.log('Task is waiting in queue');
+  //       progressValue.value = 0;
+        
+  //       if (data.position) {
+  //         console.log(`Position in queue: ${data.position}`);
+  //       }
+  //     }
       
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-      toast.add({
-      severity: 'success',
-      summary: 'Успех',
-      detail: 'Файл успешно обработан',
-      life: 3000
-      })
-      socket.close();
-    }
-    else if (data.status === 'FAILURE') {
-      console.error('Error:', data.error || 'Unknown error');
-      socket.close();
-    }
-  };
+  //     if (data.status === 'RECEIVED') {
+  //       console.log('Task received and queued for processing');
+  //       progressValue.value = 0;
+  //     }
+  //     else if (data.status === 'PROGRESS') {
+  //       console.log(`Progress: ${data.progress}% (${data.current || 0}/${data.total || 1} frames)`);
+  //     }
+  //     else if (data.status === 'SUCCESS') {
+  //       localStorage.removeItem('video_task_id');
+  //       console.log('Processing complete!', data.result);
+  //       progressValue.value = 0;
 
-  
-  socket.onclose = (event) => {
-    if (event.wasClean) {
-      console.log(`Connection closed cleanly, code=${event.code}, reason=${event.reason}`);
-    } else {
-      console.error('Connection interrupted');
-    }
-  };
+  //       const downloadLink = document.createElement('a');
+  //       downloadLink.href = data.result.url;
+  //       downloadLink.download = data.processed_file; // Имя файла для сохранения
+  //       downloadLink.style.display = 'none';
+        
+  //       document.body.appendChild(downloadLink);
+  //       downloadLink.click();
+  //       document.body.removeChild(downloadLink);
+  //       toast.add({
+  //       severity: 'success',
+  //       summary: 'Успех',
+  //       detail: 'Файл успешно обработан',
+  //       life: 3000
+  //       })
+  //       socket.close();
+  //     }
+  //     else if (data.status === 'FAILURE') {
+  //       localStorage.removeItem('video_task_id');
+  //       console.error('Error:', data.error || 'Unknown error');
+  //       socket.close();
+  //     }
+  //   };
 
-  socket.onerror = (error) => {
-    console.error('WebSocket error:', error);
-  };
-}
+    
+  //   socket.onclose = (event) => {
+  //     if (event.wasClean) {
+  //       localStorage.removeItem('video_task_id');
+  //       console.log(`Connection closed cleanly, code=${event.code}, reason=${event.reason}`);
+  //     } else {
+  //       localStorage.removeItem('video_task_id');
+  //       console.error('Connection interrupted');
+  //     }
+  //   };
+
+  //   socket.onerror = (error) => {
+      
+  //     console.error('WebSocket error:', error);
+  //   };
+  // }
 
 
 

@@ -15,7 +15,7 @@ const model = ref([
         label: 'Дополнительно',
                 items: [{ label: 'Настройки', icon: 'pi pi-fw pi-cog', to: '/settings' },
                         { label: 'Информация', icon: 'pi pi-fw pi-info-circle', to: '/about' },
-                        { label: 'Источнки', icon: 'pi pi-fw pi-github', to: '/ауау' }
+                        { label: 'Источнки', icon: 'pi pi-fw pi-github', url: 'https://github.com/DaNs-Mathb/ai' }
         ]
     },
     

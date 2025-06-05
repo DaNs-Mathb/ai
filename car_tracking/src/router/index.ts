@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '@/layout/AppLayout.vue';
+import { useWebRTCStore } from '@/components/broadcast/connection';
+import {useWebSocketStore} from '@/components/videos/websocket'
+
 
 
 const router = createRouter({
@@ -34,5 +37,21 @@ const router = createRouter({
     
   ],
 })
+
+router.beforeEach((to, from, next) => {
+  const webrtcStore = useWebRTCStore();
+  if (webrtcStore.isActive) {
+    webrtcStore.stop();
+  }
+  const websocketStore = useWebSocketStore();
+  if (websocketStore.socket) {
+    websocketStore.disconnect();
+    console.log("всёёёёёёёёёёёёёёёёёёёёёёёёё")
+  }
+  next();
+
+
+});
+
 
 export default router

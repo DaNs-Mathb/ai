@@ -1,4 +1,5 @@
 from datetime import timedelta
+import glob
 import cv2 
 from ultralytics import YOLO
 import torch
@@ -8,6 +9,8 @@ from minio.lifecycleconfig import LifecycleConfig, Expiration, Rule
 from minio.commonconfig import ENABLED, Filter
 import os
 from dotenv import load_dotenv
+from collections import defaultdict, deque
+import csv
 
 load_dotenv() 
 
@@ -55,9 +58,29 @@ def processing_video(self,input_video: str ,classe:int=2):
         
         
         #подсчет количества
-        unique_car_ids = set()
         all_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         duration = all_frames/fps
+        MIN_CONFIDENCE = 0.6
+        MIN_BOX_AREA = 1000
+        MIN_SPEED_KMH = 5
+        PARKED_FRAMES_THRESH = 30
+        AVG_CAR_LENGTH_M = 4.5
+        MAX_TRACK_MEMORY = 10
+
+        stats = {
+            'total_cars': 0,
+            'moving_cars': 0,
+            'speeds': [],
+            'max_speed': 0,
+            'min_speed': float('inf'),
+            
+        }
+
+        car_tracks = defaultdict(lambda: deque(maxlen=MAX_TRACK_MEMORY))
+        car_dimensions = {}
+        parked_frames = defaultdict(int)
+        car_lifetime = defaultdict(int)
+        unique_cars = set()
         
         
         
@@ -71,33 +94,79 @@ def processing_video(self,input_video: str ,classe:int=2):
                 break  # Выход из цикла, если видео закончилось
 
             frame_count += 1
-            if frame_count % (skip_frames + 1) == 0:
+            # if frame_count % (skip_frames + 1) == 0:
                 # Обрабатываем каждый (skip_frames+1)-й кадр
-                results = model.track(frame, classes=[classe], persist=True, device=device, imgsz=640)
-                
-                
-                if results[0].boxes.id is not None:
-                     # Получаем ID, классы и координаты
-                    boxes = results[0].boxes.xyxy  # Координаты bbox
-                    track_ids = results[0].boxes.id.int().tolist()
-                    confidences = results[0].boxes.conf.tolist()  # Уверенность детекции
+            results = model.track(frame, classes=[classe], persist=True, device=device, imgsz=640,conf=0.4)
+            
+            
+            if results[0].boxes.id is not None:
+                boxes = results[0].boxes.xyxy.cpu().numpy()
+                track_ids = results[0].boxes.id.int().tolist()
+                confidences = results[0].boxes.conf.tolist()
 
-                    
-                    
-                    # Фильтруем только машины (класс 2 в COCO)
-                    for box, track_id,  conf in zip(boxes, track_ids, confidences):
-                    # Фильтруем: только машины (класс 2), уверенность > 50%, площадь > MIN_BOX_AREA
+                for box, track_id, conf in zip(boxes, track_ids, confidences):
+                    if conf >= MIN_CONFIDENCE and (box[2]-box[0])*(box[3]-box[1]) >= MIN_BOX_AREA:
+                        car_lifetime[track_id] += 1
+                        unique_cars.add(track_id)
+
+                        x_center = (box[0] + box[2]) / 2
+                        y_center = (box[1] + box[3]) / 2
+                        car_tracks[track_id].append((x_center, y_center))
                         
-                    
-                        if conf >= 0.5 and (box[2] - box[0]) * (box[3] - box[1]) >= 1000:
-                            unique_car_ids.add(track_id)
+                        
+                        
+                        if track_id not in car_dimensions:
+                            car_width_px = box[2] - box[0]
+                            car_dimensions[track_id] = car_width_px
+
+                        if len(car_tracks[track_id]) < 10 or car_lifetime[track_id] <= 20:
+                            continue
+
+                        
+
+                        prev_x, prev_y = car_tracks[track_id][0]
+                        curr_x, curr_y = car_tracks[track_id][-1]
+                        distance_px = ((curr_x - prev_x)**2 + (curr_y - prev_y)**2)**0.5
+                        speed_px_per_sec = distance_px * fps / len(car_tracks[track_id])
+
+                        if track_id in car_dimensions:
+                            pixels_per_meter = car_dimensions[track_id] / AVG_CAR_LENGTH_M
+                            speed_kmh = (speed_px_per_sec / pixels_per_meter) * 3.6
+
+                            if speed_kmh >= MIN_SPEED_KMH:
+                                stats['speeds'].append(speed_kmh)
+                                stats['max_speed'] = max(stats['max_speed'], speed_kmh)
+                                parked_frames[track_id] = 0
+                            else:
+                                parked_frames[track_id] += 1
                 
                 
-                last_processed_frame = results[0].plot()  # Сохраняем обработанный кадр
+            stats['total_cars'] = len(unique_cars)
+            current_time = frame_count / fps
+            cars_per_min = (stats['total_cars'] / current_time) * 60 if current_time > 0 else 0
+            avg_speed = sum(stats['speeds']) / len(stats['speeds']) if stats['speeds'] else 0
+            stats['moving_cars'] = len([v for v in parked_frames.values() if v < PARKED_FRAMES_THRESH])
+
+            stats_text = [
+                f"Total cars: {stats['total_cars']}",
+                f"Moving cars: {stats['moving_cars']}",
+                f"Flow rate: {cars_per_min:.1f}/min",
+                f"Avg speed: {avg_speed:.1f} km/h",
+                f"Max speed: {stats['max_speed']:.1f} km/h",
+                f"Time: {current_time:.1f}s / {duration:.1f}s"
+            ]
+            # Сохраняем обработанный кадр
+            last_processed_frame = results[0].plot()
+            y_offset = 30
+            for i, text in enumerate(stats_text):
+                cv2.putText(last_processed_frame, text, (10, y_offset + i * 30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+                  
                 
                 
                 
                 
+
 
             progress = int((frame_count / total_frames) * 100)
             if progress % 5 == 0:
@@ -125,22 +194,50 @@ def processing_video(self,input_video: str ,classe:int=2):
             output_name,      # Имя файла в MinIO
             f"backend/src/uploads/{output_name}"    # Локальный путь
         )
-        url = client.presigned_get_object(
+        
+        csv_filename = f"{output_name[:-4]}.csv"
+        with open(f"backend/src/uploads/{output_name[:-4]}.csv", mode="w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Metric", "Value"])
+            writer.writerows(stats_text)
+        
+        client.fput_object(
+            "processed-csv",
+            csv_filename,
+            f"backend/src/uploads/{output_name[:-4]}.csv"
+        )
+        
+        csv_url = client.presigned_get_object(
+            "processed-csv",
+            csv_filename,
+            expires=timedelta(hours=1)
+        )
+        
+        video_url = client.presigned_get_object(
         "processed-videos",
         output_name,
-        expires=timedelta(hours=1))
+        expires=timedelta(hours=1)
+        )
         
-        for file_path in [f'backend/src/uploads/{output_name}',f"backend/src/uploads/{input_video}"]:
-            if os.path.exists(file_path):
+        uploads_dir = "backend/src/uploads"
+
+        # Получаем все файлы в директории
+        files = glob.glob(os.path.join(uploads_dir, "*"))
+
+        # Удаляем каждый файл
+        for file_path in files:
+            try:
                 os.remove(file_path)
+                print(f"Удалён файл: {file_path}")
+            except Exception as e:
+                print(f"Ошибка при удалении {file_path}: {e}")
         
         return {
             "status": "success",
             "original_task_id": self.request.id,  # Настоящий task_id из Celery
             "processed_file": output_name,
-            "url":url,
-            "unique_car_ids": len(unique_car_ids),
-            "cars_per_minute": len(unique_car_ids) / (duration / 60) if duration > 0 else 0,
+            "video_url":video_url,
+            "csv_url": csv_url,
             
         }
     except Exception as e:

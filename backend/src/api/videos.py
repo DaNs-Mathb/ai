@@ -138,25 +138,41 @@ async def websocket_task_status(websocket: WebSocket, task_id: str):
                         response["result"] = task.result
                     else:
                         response["error"] = str(task.result)
-                    await websocket.send_json(response)
+
+                    # Try sending final result, but catch if closed
+                    try:
+                        await websocket.send_json(response)
+                    except Exception as e:
+                        print(f"WebSocket send error (on final): {e}")
                     break
                 
-                await websocket.send_json(response)
-                await asyncio.sleep(1)  # Интервал обновлений
+                try:
+                    await websocket.send_json(response)
+                except Exception as e:
+                    print(f"WebSocket send error: {e}")
+                    break
+                await asyncio.sleep(1)
                 
             except TimeoutError:
-                await websocket.send_json({
-                    "error": "Timeout checking task status"
-                })
+                try:
+                    await websocket.send_json({"error": "Timeout checking task status"})
+                except Exception as e:
+                    print(f"WebSocket send error (timeout): {e}")
+                    break
             except Exception as e:
-                await websocket.send_json({
-                    "error": f"Internal error: {str(e)}"
-                })
+                try:
+                    await websocket.send_json({"error": f"Internal error: {str(e)}"})
+                except Exception as e:
+                    print(f"WebSocket send error (internal error): {e}")
                 break
-                
+
     except WebSocketDisconnect:
         print(f"Client disconnected from task {task_id}")
     except Exception as e:
-        await websocket.close(code=1011, reason=str(e))
+        print(f"WebSocket general error: {e}")
+        try:
+            await websocket.close(code=1011, reason=str(e))
+        except:
+            pass
 
 
