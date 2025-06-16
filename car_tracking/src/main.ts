@@ -12,12 +12,13 @@ import Lara from '@primeuix/themes/lara';
 
 import App from './App.vue'
 import router from './router'
+
+// Инициализация темы
+
+
 const app = createApp(App)
 
 const pinia = createPinia();
-
-
-
 
 pinia.use(({ store }) => {
   store.router = markRaw(router);
@@ -79,10 +80,8 @@ const Noir = definePreset(Aura, {
     }
 });
 
-
 app.use(PrimeVue, {
     theme: {
-        
         preset: Noir,
         options: {
             darkModeSelector: '.app-dark',

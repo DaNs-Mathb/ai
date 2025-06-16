@@ -46,7 +46,6 @@ router.beforeEach((to, from, next) => {
   const websocketStore = useWebSocketStore();
   if (websocketStore.socket) {
     websocketStore.disconnect();
-    console.log("всёёёёёёёёёёёёёёёёёёёёёёёёё")
   }
   next();
 

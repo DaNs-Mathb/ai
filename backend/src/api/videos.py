@@ -11,7 +11,7 @@ from celery.result import AsyncResult
 
 
 router=APIRouter()
-MAX_VIDEO_SIZE_MB = 100
+MAX_VIDEO_SIZE_MB = 1000
 ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime"]  # MP4, MOV и т.д.
 
 @router.post("/upload-validated-video/")
@@ -78,11 +78,6 @@ async def upload_validated_video(video: UploadFile = File(...)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Неизвестная ошибка: {str(e)}"
         )
-
-@router.get("/get_video/{video_name}")
-async def get_video(video_name:str):
-    return FileResponse(f"backend/src/uploads/{video_name}")
-
 
 @router.get("/tasks/{task_id}/status")#response_model=TaskStatusResponse
 async def get_task_status(task_id: str):

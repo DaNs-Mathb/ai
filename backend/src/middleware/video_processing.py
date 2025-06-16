@@ -25,10 +25,6 @@ client = Minio(
     secure=False  # True для HTTPS
 )
 
-
-
-
-
 @celery_app.task(bind=True,name="src.middleware.video_processing.processing_video")
 def processing_video(self,input_video: str ,classe:int=2):
     try:
@@ -56,7 +52,6 @@ def processing_video(self,input_video: str ,classe:int=2):
         fourcc = cv2.VideoWriter_fourcc(*'avc1')
         out = cv2.VideoWriter(f'backend/src/uploads/{output_name}', fourcc, fps, (frame_width, frame_height))
         
-        
         #подсчет количества
         all_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         duration = all_frames/fps
@@ -68,21 +63,20 @@ def processing_video(self,input_video: str ,classe:int=2):
         MAX_TRACK_MEMORY = 10
 
         stats = {
-            'total_cars': 0,
-            'moving_cars': 0,
+            'total_vehicles': 0,
+            'moving_vehicles': 0,
             'speeds': [],
             'max_speed': 0,
-            'min_speed': float('inf'),
-            
+            'frame_count': 0,
+            'unique_cars': set(),
+            'unique_motorcycles': set(),
+            'unique_trucks': set()
         }
 
         car_tracks = defaultdict(lambda: deque(maxlen=MAX_TRACK_MEMORY))
         car_dimensions = {}
         parked_frames = defaultdict(int)
         car_lifetime = defaultdict(int)
-        unique_cars = set()
-        
-        
         
         frame_count = 0
         skip_frames = 2
@@ -104,10 +98,17 @@ def processing_video(self,input_video: str ,classe:int=2):
                 track_ids = results[0].boxes.id.int().tolist()
                 confidences = results[0].boxes.conf.tolist()
 
-                for box, track_id, conf in zip(boxes, track_ids, confidences):
+                class_ids = results[0].boxes.cls.int().tolist()
+
+                for box, track_id, conf, cls in zip(boxes, track_ids, confidences,class_ids):
                     if conf >= MIN_CONFIDENCE and (box[2]-box[0])*(box[3]-box[1]) >= MIN_BOX_AREA:
                         car_lifetime[track_id] += 1
-                        unique_cars.add(track_id)
+                        if cls == 2:
+                            stats['unique_cars'].add(track_id)
+                        elif cls == 3:
+                            stats['unique_motorcycles'].add(track_id)
+                        elif cls == 7:
+                            stats['unique_trucks'].add(track_id)
 
                         x_center = (box[0] + box[2]) / 2
                         y_center = (box[1] + box[3]) / 2
@@ -141,16 +142,19 @@ def processing_video(self,input_video: str ,classe:int=2):
                                 parked_frames[track_id] += 1
                 
                 
-            stats['total_cars'] = len(unique_cars)
+            stats['total_vehicles'] = len(stats['unique_cars'] | stats['unique_motorcycles'] | stats['unique_trucks'])
             current_time = frame_count / fps
-            cars_per_min = (stats['total_cars'] / current_time) * 60 if current_time > 0 else 0
+            vehicles_per_min = (stats['total_vehicles'] / current_time) * 60 if current_time > 0 else 0
             avg_speed = sum(stats['speeds']) / len(stats['speeds']) if stats['speeds'] else 0
-            stats['moving_cars'] = len([v for v in parked_frames.values() if v < PARKED_FRAMES_THRESH])
+            stats['moving_vehicles'] = len([v for v in parked_frames.values() if v < PARKED_FRAMES_THRESH])
 
             stats_text = [
-                f"Total cars: {stats['total_cars']}",
-                f"Moving cars: {stats['moving_cars']}",
-                f"Flow rate: {cars_per_min:.1f}/min",
+                f"Cars: {len(stats['unique_cars'])}",
+                f"Motorcycles: {len(stats['unique_motorcycles'])}",
+                f"Trucks: {len(stats['unique_trucks'])}",
+                f"Total vehicles: {stats['total_vehicles']}",
+                f"Moving vehicles: {stats['moving_vehicles']}",
+                f"Flow rate: {vehicles_per_min:.1f}/min",
                 f"Avg speed: {avg_speed:.1f} km/h",
                 f"Max speed: {stats['max_speed']:.1f} km/h",
                 f"Time: {current_time:.1f}s / {duration:.1f}s"
@@ -161,13 +165,7 @@ def processing_video(self,input_video: str ,classe:int=2):
             for i, text in enumerate(stats_text):
                 cv2.putText(last_processed_frame, text, (10, y_offset + i * 30),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-                  
-                
-                
-                
-                
-
-
+       
             progress = int((frame_count / total_frames) * 100)
             if progress % 5 == 0:
                 
@@ -194,12 +192,14 @@ def processing_video(self,input_video: str ,classe:int=2):
             output_name,      # Имя файла в MinIO
             f"backend/src/uploads/{output_name}"    # Локальный путь
         )
-        
+        stats_csv_rows = [line.split(":", 1) for line in stats_text]
+        # Удалим лишние пробелы у метрик и значений
+        stats_csv_rows = [[key.strip(), value.strip()] for key, value in stats_csv_rows]
         csv_filename = f"{output_name[:-4]}.csv"
         with open(f"backend/src/uploads/{output_name[:-4]}.csv", mode="w", newline="") as file:
             writer = csv.writer(file)
             writer.writerow(["Metric", "Value"])
-            writer.writerows(stats_text)
+            writer.writerows(stats_csv_rows)
         
         client.fput_object(
             "processed-csv",
@@ -219,18 +219,12 @@ def processing_video(self,input_video: str ,classe:int=2):
         expires=timedelta(hours=1)
         )
         
-        uploads_dir = "backend/src/uploads"
+        # uploads_dir = "backend/src/uploads"
 
         # Получаем все файлы в директории
-        files = glob.glob(os.path.join(uploads_dir, "*"))
-
-        # Удаляем каждый файл
-        for file_path in files:
-            try:
+        for file_path in [f'backend/src/uploads/{output_name}',f"backend/src/uploads/{input_video}",f'backend/src/uploads/{output_name[:-4]}.csv']:
+            if os.path.exists(file_path):
                 os.remove(file_path)
-                print(f"Удалён файл: {file_path}")
-            except Exception as e:
-                print(f"Ошибка при удалении {file_path}: {e}")
         
         return {
             "status": "success",

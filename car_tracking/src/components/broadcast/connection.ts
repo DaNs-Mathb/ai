@@ -8,12 +8,29 @@ export const useWebRTCStore = defineStore('webrtc', {
   }),
   actions: {
     createPeerConnection() {
+      // const config: RTCConfiguration = {
+      //   iceServers: [
+      //     { urls: 'stun:stun.l.google.com:19302' }
+      //   ]
+      // }; так правильно но меделнно
       const config = { sdpSemantics: 'unified-plan' };
       this.pc = new RTCPeerConnection(config);
 
       this.pc.addEventListener('track', (evt) => {
         const element = document.getElementById(evt.track.kind) as HTMLMediaElement;
-        if (element) element.srcObject = evt.streams[0];
+        if (element) {
+          element.srcObject = evt.streams[0];
+          // Показываем видео только когда начали приходить кадры
+          const videoCont = document.getElementById('video-cont') as HTMLElement;
+          if (videoCont) {
+            videoCont.classList.add('video');
+          }
+          // Скрываем спиннер
+          const spinner = document.getElementById('loading-spinner') as HTMLElement;
+          if (spinner) {
+            spinner.classList.remove('active');
+          }
+        }
       });
     },
 
@@ -59,7 +76,20 @@ export const useWebRTCStore = defineStore('webrtc', {
     async start() {
       try {
         const startButton = document.getElementById('start') as HTMLElement;
-        if (startButton) startButton.style.display = 'none';
+        const video = document.getElementById('video-cont') as HTMLElement;
+        const trafficContainer = document.querySelector('.trafficContainer') as HTMLElement;
+        const spinner = document.getElementById('loading-spinner') as HTMLElement;
+        
+        if (startButton){ 
+          startButton.style.display = 'none';
+        }
+        if (trafficContainer) {
+          trafficContainer.classList.add('hidden');
+        }
+        if (spinner) {
+          spinner.classList.add('active');
+        }
+        
         this.createPeerConnection();
 
         const constraints = { audio: false, video: true };
@@ -94,9 +124,23 @@ export const useWebRTCStore = defineStore('webrtc', {
       }
 
       const stopButton = document.getElementById('stop') as HTMLElement;
+      const video = document.getElementById('video-cont') as HTMLElement;
+      const trafficContainer = document.querySelector('.trafficContainer') as HTMLElement;
+      const spinner = document.getElementById('loading-spinner') as HTMLElement;
+      
       if (stopButton) stopButton.style.display = 'none';
       const startButton = document.getElementById('start') as HTMLElement;
-      if (startButton) startButton.style.display = 'inline-block';
+      if (startButton) {
+        startButton.style.display = 'inline-block';
+        video.classList.remove('video');
+      }
+      if (trafficContainer) {
+        trafficContainer.classList.remove('hidden');
+      }
+      if (spinner) {
+        spinner.classList.remove('active');
+      }
+      
       const videoElement = document.getElementById('video') as HTMLVideoElement;
       if (videoElement) videoElement.srcObject = null;
       this.isActive = false;

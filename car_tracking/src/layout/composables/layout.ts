@@ -1,5 +1,7 @@
 import { computed, reactive } from 'vue';
 
+
+
 const layoutConfig = reactive({
     preset: 'Aura',
     primary: 'noir',
@@ -7,6 +9,16 @@ const layoutConfig = reactive({
     darkTheme: false,
     menuMode: 'static'
 });
+
+const savedTheme = localStorage.getItem('darkTheme');
+if (savedTheme === 'true') {
+    layoutConfig.darkTheme = true;
+    document.documentElement.classList.add('app-dark');
+} else {
+    layoutConfig.darkTheme = false;
+    document.documentElement.classList.remove('app-dark');
+}
+
 
 const layoutState = reactive({
     staticMenuDesktopInactive: false,
@@ -26,7 +38,6 @@ export function useLayout() {
     const toggleDarkMode = () => {
         if (!document.startViewTransition) {
             executeDarkModeToggle();
-
             return;
         }
 
@@ -36,6 +47,8 @@ export function useLayout() {
     const executeDarkModeToggle = (event?: Event | undefined) => {
         layoutConfig.darkTheme = !layoutConfig.darkTheme;
         document.documentElement.classList.toggle('app-dark');
+        // Сохраняем состояние темы в localStorage
+        localStorage.setItem('darkTheme', layoutConfig.darkTheme.toString());
     };
 
     const toggleMenu = () => {

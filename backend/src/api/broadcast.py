@@ -25,12 +25,6 @@ async def offer(params: Offer):
             await pc.close()
             pcs.discard(pc)
 
-    # open media source
-    # _, video_capture = create_local_tracks()  # Получаем cv2.VideoCapture
-    # video_track = VideoTransformTrack(video_capture)
-
-    # Добавляем трек
-    # pc.addTrack(video_track)
   
     processor = FrameProcessor("backend/src/middleware/yolo11s.pt", device="cuda")
     @pc.on("track")
@@ -41,12 +35,10 @@ async def offer(params: Offer):
     
         if track.kind == "video":
             pc.addTrack(
-                # relay.subscribe(track)
-                # asyncio.create_task(wait_and_add(track))
+
                 VideoTransformTrack(relay.subscribe(track),processor)#, transform=params.video_transform
             )
-            # if args.record_to:
-            #     recorder.addTrack(relay.subscribe(track))
+
 
         @track.on("ended")
         def track_ended():
@@ -54,12 +46,6 @@ async def offer(params: Offer):
             if hasattr(processor, "close"):
                 asyncio.create_task(processor.close())  # корректный shutdown
                 
-    # async def wait_and_add(track):
-    #     try:
-    #         await asyncio.wait_for(self._ready_event.wait(), timeout=10.0)
-    #     except asyncio.TimeoutError:
-    #         raise MediaStreamError("Model initialization timeout")
-    #     pc.addTrack(VideoTransformTrack(relay.subscribe(track)))
     
 
     await pc.setRemoteDescription(offer)
