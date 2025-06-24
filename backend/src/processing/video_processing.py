@@ -25,15 +25,16 @@ client = Minio(
     secure=False  # True для HTTPS
 )
 
-@celery_app.task(bind=True,name="src.middleware.video_processing.processing_video")
+@celery_app.task(bind=True,name="src.processing.video_processing.processing_video")
 def processing_video(self,input_video: str ,classe:int=2):
     try:
-        
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        # print(f"Using device: {device}")
-        model = YOLO("backend/src/middleware/yolo11m.pt").to(device)  # Замените "yolov8n.pt" на путь к вашей модели
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        uploads_dir = os.path.abspath(os.path.join(current_dir, '../uploads'))
+        model_path = os.path.join(current_dir, 'yolo11m.pt')
+        model = YOLO(model_path).to(device)  # Используем абсолютный путь к модели
         # Открываем видео через OpenCV
-        cap = cv2.VideoCapture(f"backend/src/uploads/{input_video}")
+        cap = cv2.VideoCapture(os.path.join(uploads_dir, input_video))
     
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         
@@ -49,8 +50,10 @@ def processing_video(self,input_video: str ,classe:int=2):
         fps = int(cap.get(cv2.CAP_PROP_FPS))
         output_name=f'output_{input_video}'
         # Создаем VideoWriter для сохранения видео
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')
-        out = cv2.VideoWriter(f'backend/src/uploads/{output_name}', fourcc, fps, (frame_width, frame_height))
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(os.path.join(uploads_dir, output_name), fourcc, fps, (frame_width, frame_height))
+        if not out.isOpened():
+            raise Exception(f"Не удалось создать выходной видеофайл: {os.path.join(uploads_dir, output_name)}. Проверьте fourcc и расширение файла.")
         
         #подсчет количества
         all_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -79,7 +82,6 @@ def processing_video(self,input_video: str ,classe:int=2):
         car_lifetime = defaultdict(int)
         
         frame_count = 0
-        skip_frames = 2
         last_processed_frame = None
 
         while cap.isOpened():
@@ -88,8 +90,6 @@ def processing_video(self,input_video: str ,classe:int=2):
                 break  # Выход из цикла, если видео закончилось
 
             frame_count += 1
-            # if frame_count % (skip_frames + 1) == 0:
-                # Обрабатываем каждый (skip_frames+1)-й кадр
             results = model.track(frame, classes=[classe], persist=True, device=device, imgsz=640,conf=0.4)
             
             
@@ -122,8 +122,6 @@ def processing_video(self,input_video: str ,classe:int=2):
 
                         if len(car_tracks[track_id]) < 10 or car_lifetime[track_id] <= 20:
                             continue
-
-                        
 
                         prev_x, prev_y = car_tracks[track_id][0]
                         curr_x, curr_y = car_tracks[track_id][-1]
@@ -190,13 +188,13 @@ def processing_video(self,input_video: str ,classe:int=2):
         client.fput_object(
             "processed-videos",  # Бакет
             output_name,      # Имя файла в MinIO
-            f"backend/src/uploads/{output_name}"    # Локальный путь
+            os.path.join(uploads_dir, output_name)    # Локальный путь
         )
         stats_csv_rows = [line.split(":", 1) for line in stats_text]
         # Удалим лишние пробелы у метрик и значений
         stats_csv_rows = [[key.strip(), value.strip()] for key, value in stats_csv_rows]
         csv_filename = f"{output_name[:-4]}.csv"
-        with open(f"backend/src/uploads/{output_name[:-4]}.csv", mode="w", newline="") as file:
+        with open(os.path.join(uploads_dir, f"{output_name[:-4]}.csv"), mode="w", newline="") as file:
             writer = csv.writer(file)
             writer.writerow(["Metric", "Value"])
             writer.writerows(stats_csv_rows)
@@ -204,7 +202,7 @@ def processing_video(self,input_video: str ,classe:int=2):
         client.fput_object(
             "processed-csv",
             csv_filename,
-            f"backend/src/uploads/{output_name[:-4]}.csv"
+            os.path.join(uploads_dir, f"{output_name[:-4]}.csv")
         )
         
         csv_url = client.presigned_get_object(
@@ -219,10 +217,8 @@ def processing_video(self,input_video: str ,classe:int=2):
         expires=timedelta(hours=1)
         )
         
-        # uploads_dir = "backend/src/uploads"
-
         # Получаем все файлы в директории
-        for file_path in [f'backend/src/uploads/{output_name}',f"backend/src/uploads/{input_video}",f'backend/src/uploads/{output_name[:-4]}.csv']:
+        for file_path in [os.path.join(uploads_dir, output_name), os.path.join(uploads_dir, input_video), os.path.join(uploads_dir, f"{output_name[:-4]}.csv")]:
             if os.path.exists(file_path):
                 os.remove(file_path)
         
@@ -240,11 +236,3 @@ def processing_video(self,input_video: str ,classe:int=2):
             "error": str(e),
             "original_task_id": self.request.id,  # Даже при ошибке возвращаем task_id
         }
-# print(torch.cuda.is_available())
-# processing_video(input_video="cars.mp4")
-
-# print(f"PyTorch version: {torch.__version__}")
-# print(f"CUDA available: {torch.cuda.is_available()}")
-# print(f"GPU device: {torch.cuda.get_device_name(0)}")
-# print(torch.backends.cudnn.enabled)  # Должно быть True
-# docker run -p 9000:9000 -p 9001:9001 --name minio -v D:\programm\minio_storage:/data -e "MINIO_ROOT_USER=minioadmin" -e "MINIO_ROOT_PASSWORD=minioadmin" minio/minio server /data --console-address ":9001"

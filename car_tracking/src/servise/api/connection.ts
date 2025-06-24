@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import {baseUrl} from "../env"
 
 export const useWebRTCStore = defineStore('webrtc', {
   state: () => ({
@@ -8,12 +9,12 @@ export const useWebRTCStore = defineStore('webrtc', {
   }),
   actions: {
     createPeerConnection() {
-      // const config: RTCConfiguration = {
-      //   iceServers: [
-      //     { urls: 'stun:stun.l.google.com:19302' }
-      //   ]
-      // }; так правильно но меделнно
-      const config = { sdpSemantics: 'unified-plan' };
+      const config: RTCConfiguration = {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' }
+        ]
+      }; //так правильно но меделнно
+      // const config = { sdpSemantics: 'unified-plan' };
       this.pc = new RTCPeerConnection(config);
 
       this.pc.addEventListener('track', (evt) => {
@@ -34,7 +35,10 @@ export const useWebRTCStore = defineStore('webrtc', {
       });
     },
 
+    
+
     async negotiate() {
+      const Url:string=baseUrl
       if (!this.pc) throw new Error('PeerConnection не инициализирован');
 
       try {
@@ -55,7 +59,7 @@ export const useWebRTCStore = defineStore('webrtc', {
           }
         });
 
-        const response = await fetch('http://127.0.0.1:8000/offer', {
+        const response = await fetch(`${Url}/offer`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

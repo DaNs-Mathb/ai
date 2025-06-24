@@ -1,0 +1,22 @@
+# Пример .dockerignore
+.git
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.venv/
+venv/
+env/
+*.log
+*.tmp
+*.csv
+*.json
+*.dat
+data/
+notebooks/
+tests/
+.DS_Store
+.dockerignore
+Dockerfile
+README.md

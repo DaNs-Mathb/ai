@@ -5,7 +5,7 @@ from fastapi import File, UploadFile, status
 from fastapi import HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from src.api.schemas import TaskStatusResponse
-from src.middleware.video_processing import processing_video
+from src.processing.video_processing import processing_video
 import uuid
 from celery.result import AsyncResult
 
@@ -35,10 +35,12 @@ async def upload_validated_video(video: UploadFile = File(...)):
             )
         
         # Создаем директорию, если её нет
-        os.makedirs("backend/src/uploads", exist_ok=True)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        uploads_dir = os.path.join(current_dir, '../uploads')
+        os.makedirs(uploads_dir, exist_ok=True)
         
         # Сохранение файла
-        file_path = f"backend/src/uploads/{video_id}.mp4"
+        file_path = os.path.join(uploads_dir, f"{video_id}.mp4")
         try:
             with open(file_path, "wb") as buffer:
                 buffer.write(await video.read())
@@ -134,7 +136,6 @@ async def websocket_task_status(websocket: WebSocket, task_id: str):
                     else:
                         response["error"] = str(task.result)
 
-                    # Try sending final result, but catch if closed
                     try:
                         await websocket.send_json(response)
                     except Exception as e:

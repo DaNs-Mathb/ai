@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '@/layout/AppLayout.vue';
-import { useWebRTCStore } from '@/components/broadcast/connection';
-import {useWebSocketStore} from '@/components/videos/websocket'
+import { useWebRTCStore } from '@/servise/api/connection';
+import {useWebSocketStore} from '@/servise/api/websocket'
 
 
 

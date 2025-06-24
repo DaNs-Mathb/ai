@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
+import {websocketUrl} from "../env"
 
 
 interface WebSocketMessage {
@@ -25,21 +26,17 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const toast = useToast(); 
   const downloadUrl = ref('');
   const processedFileName = ref('');
+  const Url:string = websocketUrl
 
   const connect = (taskId: string) => {
     if (!taskId) {
-      console.error('Task ID is required');
+      
       return;
     }
 
-    const connection = `ws://127.0.0.1:8000/ws/tasks/${taskId}`;
-    console.log('Connecting to:', connection);
+    const connection = `${Url}/${taskId}`;
 
     socket.value = new WebSocket(connection);
-
-    socket.value.onopen = () => {
-      console.log('WebSocket connection established');
-    };
 
     socket.value.onmessage = (event: MessageEvent) => {
       const data: WebSocketMessage = JSON.parse(event.data);
@@ -47,7 +44,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
       if (!localStorage.getItem('video_task_id') && data.task_id) {
         localStorage.setItem('video_task_id', data.task_id);
-        console.log('Ключ установлен');
+        
       }
 
       if (data.progress !== undefined) {
@@ -56,18 +53,18 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
       switch (data.status) {
         case 'PENDING':
-          console.log('Task is waiting in queue');
+          // console.log('Task is waiting in queue');
           progressValue.value = 0;
           if (data.position) {
-            console.log(`Position in queue: ${data.position}`);
+            // console.log(`Position in queue: ${data.position}`);
           }
           break;
         case 'RECEIVED':
-          console.log('Task received and queued for processing');
+          // console.log('Task received and queued for processing');
           progressValue.value = 0;
           break;
         case 'PROGRESS':
-          console.log(`Progress: ${data.progress}% (${data.current || 0}/${data.total || 1} frames)`);
+          // console.log(`Progress: ${data.progress}% (${data.current || 0}/${data.total || 1} frames)`);
           break;
         case 'SUCCESS':
           localStorage.removeItem('video_task_id');
@@ -101,7 +98,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
           break;
         case 'FAILURE':
           localStorage.removeItem('video_task_id');
-          console.error('Error:', data.error || 'Unknown error');
+          // console.error('Error:', data.error || 'Unknown error');
           disconnect();
           break;
       }
@@ -110,14 +107,26 @@ export const useWebSocketStore = defineStore('websocket', () => {
     socket.value.onclose = (event) => {
       
       if (event.wasClean) {
-        console.log(`Connection closed cleanly, code=${event.code}, reason=${event.reason}`);
+        // console.log(`Connection closed cleanly, code=${event.code}, reason=${event.reason}`);
       } else {
-        console.error('Connection interrupted');
+        // console.error('Connection interrupted');
+        toast.add({
+          severity: 'error',
+          summary: 'Ошибка соединения',
+          detail: 'Соединение с сервером было прервано',
+          life: 4000,
+        });
       }
     };
 
     socket.value.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      // console.error('WebSocket error:', error);
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка WebSocket',
+        detail: 'Произошла ошибка WebSocket соединения',
+        life: 4000,
+      });
     };
   };
 

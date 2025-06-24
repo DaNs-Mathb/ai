@@ -1,0 +1,27 @@
+.upload-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh; /* центрирование по всей высоте экрана */
+  flex-direction: row;
+  gap: 48px;
+  text-align: center;
+}
+
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem; /* отступ между загрузкой и кнопкой */
+}
+.upload-content .p-progressbar {
+  visibility: visible;
+  width: 100%;
+  /* Увеличьте высоту для лучшей видимости */
+}
+
+@media (max-width: 991px) {
+  .upload-container{
+    flex-direction: column;
+  }
+} 

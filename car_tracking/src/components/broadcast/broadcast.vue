@@ -59,7 +59,7 @@
 import { ref } from "vue";
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
-import { useWebRTCStore } from './connection.ts'
+import { useWebRTCStore } from '../../servise/api/connection.ts'
 import { onBeforeUnmount } from 'vue'
 import ProgressSpinner from 'primevue/progressspinner';
 
@@ -87,75 +87,6 @@ onBeforeUnmount(() => {
 
 </script>
 
-<style>
-.broadcast-container{
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100vh; /* центрирование по всей высоте экрана */
-    flex-direction: row;
-    gap: 48px;
-    
-}
-
-.video-container{
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-}
-
-#video-cont {
-    display: none;
-    width: 640px;
-    height: 480px;
-    background: #000;
-    position: relative;
-}
-
-#video-cont.video {
-    display: block;
-}
-
-#video-cont video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-
-.loading-spinner {
-    display: none;
-    margin: 20px auto;
-}
-
-.loading-spinner.active {
-    display: block;
-}
-
-.trafficContainer {
-    transition: opacity 0.3s ease;
-}
-
-.trafficContainer.hidden {
-    display: none;
-}
-
-@media (max-width: 991px) {
-  .broadcast-container{
-    flex-direction: column;
-  }
-  
-  .video-container {
-    width: 100%;
-    max-width: 640px;
-  }
-  
-  #video-cont {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 4/3;
-  }
-}
-
+<style lang="scss">
 
 </style>

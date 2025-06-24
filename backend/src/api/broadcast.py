@@ -1,10 +1,10 @@
-
 from fastapi import APIRouter
 import asyncio
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.media import MediaPlayer, MediaRelay, MediaBlackhole
 from src.api.schemas import Offer
-from src.middleware.broadcast_processing import FrameProcessor, VideoTransformTrack
+from src.processing.broadcast_processing import FrameProcessor, VideoTransformTrack
+import os
 
 
 router=APIRouter()
@@ -26,19 +26,17 @@ async def offer(params: Offer):
             pcs.discard(pc)
 
   
-    processor = FrameProcessor("backend/src/middleware/yolo11s.pt", device="cuda")
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(current_dir, '../processing/yolo11s.pt')
+    processor = FrameProcessor(model_path, device="cuda")
     @pc.on("track")
     def on_track(track):
        
-
-    
-    
         if track.kind == "video":
             pc.addTrack(
 
                 VideoTransformTrack(relay.subscribe(track),processor)#, transform=params.video_transform
             )
-
 
         @track.on("ended")
         def track_ended():
@@ -55,9 +53,6 @@ async def offer(params: Offer):
     await pc.setLocalDescription(answer)
 
     return {"sdp": pc.localDescription.sdp, "type": pc.localDescription.type}
-
-
-
 
 
 async def close_connection(pc: RTCPeerConnection):

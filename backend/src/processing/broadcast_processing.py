@@ -13,13 +13,11 @@ from av import VideoFrame
 import psutil
 import gc
 
-# Настройка логирования
-
 
 class FrameProcessor:
     def __init__(self, model_path, device="cuda"):
         self._model_path = model_path
-        self._device = device
+        self._device = device if torch.cuda.is_available() else 'cpu'
         self._ready_event = asyncio.Event()
         self._input_queue = asyncio.Queue()
         self._output_queue = asyncio.Queue()
@@ -128,7 +126,6 @@ class FrameProcessor:
                     f"Flow rate: {vehicles_per_min:.1f}/min",
                     f"Avg speed: {avg_speed:.1f} km/h",
                     f"Max speed: {self.stats['max_speed']:.1f} km/h",
-                    f"Time: {current_time:.1f}s"
                 ]
 
                 for i, text in enumerate(stats_text):
@@ -167,10 +164,7 @@ class VideoTransformTrack(MediaStreamTrack):
         super().__init__()
         self.track = video_capture
         self.processor = processor
-  
-
-
-
+ 
     async def recv(self):
         try:
             frame = await self.track.recv()

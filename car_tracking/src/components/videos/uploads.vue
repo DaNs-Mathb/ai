@@ -1,5 +1,3 @@
-
-
 <template>
   <div class="upload-container">
     <Toast />
@@ -83,7 +81,7 @@ import {ChildService} from "../../servise/api/videos"
 import { ProgressBar } from 'primevue';
 import { onMounted } from 'vue';
 import { onBeforeUnmount } from 'vue';
-import { useWebSocketStore } from './websocket';
+import { useWebSocketStore } from '../../servise/api/websocket';
 
 
 const childService = new ChildService();
@@ -129,6 +127,17 @@ const onSelect = (event: { files: File[] }) => {
 const upload = async () => {
   if (!selectedFile.value) return
 
+  // Проверка на активную задачу
+  if (localStorage.getItem('video_task_id')) {
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Дождитесь завершения текущей обработки перед загрузкой нового файла',
+      life: 3000
+    });
+    return;
+  }
+
   const formData = new FormData()
   formData.append('video', selectedFile.value)
 
@@ -158,134 +167,10 @@ const upload = async () => {
   }
 }
 
-  // const progress =async (task:string)=>{
-  //   const taskId = task; 
-    
-  //   if (!taskId) {
-  //     console.error('Task ID is required');
-  //     return;
-  //   }
-
-  //   // Формируем URL подключения
-  //   const protocol ='ws:';
-  //   const connection = `${protocol}//127.0.0.1:8000/ws/tasks/${taskId}`;
-    
-  //   console.log('Connecting to:', connection);
-    
-  //   // Создаем новое подключение
-  //   socket = new WebSocket(connection);
-
-  //   socket.onopen = () => {
-  //     console.log('WebSocket connection established');
-  //   };
-
-  //   socket.onmessage = (event) => {
-  //     const data = JSON.parse(event.data);
-  //     console.log('Update received:', data);
-  //     if (localStorage.getItem('video_task_id') === null) {
-  //       localStorage.setItem('video_task_id', data.task_id);
-  //       console.log("Ключ установлен");
-  //     }
-  //     // Обновляем прогресс
-  //     if (data.progress !== undefined) {
-  //       progressValue.value = data.progress;
-  //       console.log(`Progress: ${data.progress}% (${data.current || 0}/${data.total || 1} frames)`);
-  //     }
-
-  //     if (data.status === 'PENDING') {
-  //       console.log('Task is waiting in queue');
-  //       progressValue.value = 0;
-        
-  //       if (data.position) {
-  //         console.log(`Position in queue: ${data.position}`);
-  //       }
-  //     }
-      
-  //     if (data.status === 'RECEIVED') {
-  //       console.log('Task received and queued for processing');
-  //       progressValue.value = 0;
-  //     }
-  //     else if (data.status === 'PROGRESS') {
-  //       console.log(`Progress: ${data.progress}% (${data.current || 0}/${data.total || 1} frames)`);
-  //     }
-  //     else if (data.status === 'SUCCESS') {
-  //       localStorage.removeItem('video_task_id');
-  //       console.log('Processing complete!', data.result);
-  //       progressValue.value = 0;
-
-  //       const downloadLink = document.createElement('a');
-  //       downloadLink.href = data.result.url;
-  //       downloadLink.download = data.processed_file; // Имя файла для сохранения
-  //       downloadLink.style.display = 'none';
-        
-  //       document.body.appendChild(downloadLink);
-  //       downloadLink.click();
-  //       document.body.removeChild(downloadLink);
-  //       toast.add({
-  //       severity: 'success',
-  //       summary: 'Успех',
-  //       detail: 'Файл успешно обработан',
-  //       life: 3000
-  //       })
-  //       socket.close();
-  //     }
-  //     else if (data.status === 'FAILURE') {
-  //       localStorage.removeItem('video_task_id');
-  //       console.error('Error:', data.error || 'Unknown error');
-  //       socket.close();
-  //     }
-  //   };
-
-    
-  //   socket.onclose = (event) => {
-  //     if (event.wasClean) {
-  //       localStorage.removeItem('video_task_id');
-  //       console.log(`Connection closed cleanly, code=${event.code}, reason=${event.reason}`);
-  //     } else {
-  //       localStorage.removeItem('video_task_id');
-  //       console.error('Connection interrupted');
-  //     }
-  //   };
-
-  //   socket.onerror = (error) => {
-      
-  //     console.error('WebSocket error:', error);
-  //   };
-  // }
-
-
-
 
 </script>
 
-<style scoped>
-.upload-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100vh; /* центрирование по всей высоте экрана */
-  flex-direction: row;
-  gap: 48px;
-  text-align: center;
-}
+<style lang="scss">
 
-.upload-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem; /* отступ между загрузкой и кнопкой */
-}
-.upload-content .p-progressbar {
-  visibility: visible;
-  width: 100%;
-  /* Увеличьте высоту для лучшей видимости */
-  
-}
-
-@media (max-width: 991px) {
-  .upload-container{
-    flex-direction: column;
-  }
-}
 </style>
 
