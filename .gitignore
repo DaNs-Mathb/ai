@@ -30,6 +30,7 @@ coverage
 *.njsproj
 *.sln
 *.sw?
-docker-compose
+docker-compose.yml
+env.ts
 
 *.tsbuildinfo
