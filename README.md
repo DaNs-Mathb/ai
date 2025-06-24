@@ -15,12 +15,11 @@
 2. **Файл переменных окружения для бэкенда**
    - `.env` в папке `backend`
    - Пример содержимого:
-      ```env
-   # Пример переменных
-   REDIS_URL=redis://localhost:6379/0
-   MINIO_ENDPOINT=localhost:9000
-   MINIO_ACCESS_KEY=
-   MINIO_SECRET_KEY=
+     ```env
+     REDIS_URL=redis://localhost:6379/0
+     MINIO_ENDPOINT=localhost:9000
+     MINIO_ACCESS_KEY=
+     MINIO_SECRET_KEY=
    # ... другие переменные ...
      ```
 
