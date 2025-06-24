@@ -9,8 +9,6 @@
         ref="fileupload"
         mode="basic"
         name="video"
-        accept="video/*"
-        :maxFileSize="100000000"
         chooseLabel="Выбрать файл"
         uploadLabel="Загрузить"
         cancelLabel="Отмена"
@@ -117,8 +115,36 @@ watch(
 
 
 const onSelect = (event: { files: File[] }) => {
+  selectedFile.value = null;
+  isUploading.value = true;
   const file = event.files[0]
   if (file) {
+    if (!file.type.startsWith("video/")) {
+      toast.add({
+        severity: "error",
+        summary: "Ошибка",
+        detail: "Выберите видеофайл",
+        life: 3000,
+      });
+      isUploading.value = true;
+      if (fileupload.value) fileupload.value.clear();
+      return;
+    }
+    
+    // Проверка размера файла (100 МБ = 100 * 1024 * 1024 байт)
+    const maxSize = 100 * 1024 * 1024; // 100 МБ в байтах
+    if (file.size > maxSize) {
+      toast.add({
+        severity: "error",
+        summary: "Ошибка",
+        detail: "Размер файла не должен превышать 100 МБ",
+        life: 3000,
+      });
+      isUploading.value = true;
+      if (fileupload.value) fileupload.value.clear();
+      return;
+    }
+    
     selectedFile.value = file
     isUploading.value = false
   }
